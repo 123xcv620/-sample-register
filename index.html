@@ -258,7 +258,7 @@ const SUPABASE_URL = "https://aneryxogzmbxbrocidtq.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFuZXJ5eG9nem1ieGJyb2NpZHRxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM0OTY4NDgsImV4cCI6MjA5OTA3Mjg0OH0.eOpWb2JiZPkmmYMQ1eK0p8raNYqQH0T32UTNNRfCFDE";
 const TABLE = "sample_register";
 
-let supabase = null;
+let sbClient = null;
 let CACHE = [];   // 内存中的数据副本，用于本地筛选/下拉
 
 /* ========== 初始化 ========== */
@@ -268,14 +268,14 @@ async function init() {
     showToast("请先在源码顶部填入 SUPABASE_URL 和 ANON KEY");
     return;
   }
-  supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  sbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
   setCloud(true, "已连接云端");
 
   // 首次拉取
   await reloadData();
 
   // 实时订阅：他人增删改，本地秒刷新
-  supabase
+  sbClient
     .channel("sample_register_changes")
     .on("postgres_changes", { event: "*", schema: "public", table: TABLE }, (payload) => {
       reloadData();
@@ -291,7 +291,7 @@ function setCloud(ok, text) {
 
 /* ========== 数据层（Supabase 替代 localStorage） ========== */
 async function reloadData() {
-  const { data, error } = await supabase.from(TABLE).select("*").order("created_at", { ascending: false });
+  const { data, error } = await sbClient.from(TABLE).select("*").order("created_at", { ascending: false });
   if (error) { showToast("读取失败：" + error.message); return; }
   CACHE = data || [];
   if (document.getElementById("page-summary").classList.contains("active")) {
@@ -304,13 +304,13 @@ async function reloadData() {
 }
 
 async function insertRecord(rec) {
-  const { error } = await supabase.from(TABLE).insert([rec]);
+  const { error } = await sbClient.from(TABLE).insert([rec]);
   if (error) { showToast("提交失败：" + error.message); return false; }
   return true;
 }
 
 async function deleteRecord(id) {
-  const { error } = await supabase.from(TABLE).delete().eq("id", id);
+  const { error } = await sbClient.from(TABLE).delete().eq("id", id);
   if (error) { showToast("删除失败：" + error.message); return; }
   // 实时订阅会触发 reloadData，这里不必手动刷新
 }
