@@ -246,8 +246,8 @@ nav.tab-bar a .tab-icon { font-size: 20px; line-height: 1; }
   <a href="javascript:switchPage('summary')" id="tabSummary"><span class="tab-icon">&#9776;</span><span>汇总</span></a>
 </nav>
 
-<!-- Supabase 客户端 -->
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<!-- Supabase 客户端（本地托管，避免外部 CDN 被墙导致连接中） -->
+<script src="./supabase-js.min.js"></script>
 <script>
 /* ============================================================
    配置区：把下面两项换成你自己的 Supabase 项目信息
