@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>留样登记系统（云同步版）</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  background-color: #f5f5f5;
+  color: #333;
+  min-height: 100vh;
+  padding-bottom: 70px;
+}
+header {
+  background: linear-gradient(135deg, #07c160, #06ad56);
+  color: #fff;
+  text-align: center;
+  padding: 16px 0;
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+.cloud-badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 12px; font-weight: 400; opacity: 0.95; margin-top: 4px;
+}
+.cloud-badge .dot { width: 8px; height: 8px; border-radius: 50%; background: #ffd54f; }
+.cloud-badge.online .dot { background: #a5ffce; }
+.page { display: none; padding: 16px; }
+.page.active { display: block; }
+
+.form-group { margin-bottom: 14px; }
+.form-group label { display: block; font-size: 14px; color: #666; margin-bottom: 6px; font-weight: 500; }
+.form-group input, .form-group textarea, .form-group select {
+  width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px;
+  font-size: 15px; background: #fff; outline: none; -webkit-appearance: none; appearance: none;
+}
+.form-group input:focus, .form-group textarea:focus, .form-group select:focus { border-color: #07c160; }
+.form-group textarea { resize: vertical; min-height: 70px; }
+.form-row { display: flex; gap: 10px; }
+.form-row .form-group { flex: 1; }
+
+.combobox-wrap { position: relative; }
+.combobox-wrap input { padding-right: 32px; }
+.combobox-wrap .dropdown-arrow { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); font-size: 12px; color: #999; pointer-events: none; }
+.combobox-dropdown {
+  position: absolute; top: 100%; left: 0; right: 0; background: #fff; border: 1px solid #ddd;
+  border-top: none; border-radius: 0 0 8px 8px; max-height: 180px; overflow-y: auto; z-index: 50;
+  display: none; box-shadow: 0 4px 8px rgba(0,0,0,0.08);
+}
+.combobox-dropdown.show { display: block; }
+.combobox-dropdown .option-item { padding: 10px 12px; font-size: 14px; color: #333; cursor: pointer; border-bottom: 1px solid #f5f5f5; }
+.combobox-dropdown .option-item:last-child { border-bottom: none; }
+.combobox-dropdown .option-item:active { background: #f0f0f0; }
+
+.reason-presets { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+.reason-preset {
+  padding: 6px 14px; border: 1px solid #ddd; border-radius: 16px; font-size: 13px;
+  background: #fff; color: #555; cursor: pointer; transition: all 0.2s; user-select: none;
+}
+.reason-preset.selected { background: #07c160; color: #fff; border-color: #07c160; }
+.reason-tags { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 6px; }
+.reason-tag {
+  display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px;
+  background: #e8f5e9; color: #2e7d32; border-radius: 14px; font-size: 13px;
+}
+.reason-tag .tag-close { cursor: pointer; font-size: 15px; line-height: 1; color: #888; margin-left: 2px; }
+.reason-tag .tag-close:active { color: #333; }
+
+.search-bar { display: flex; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
+.search-bar input { flex: 1; min-width: 120px; padding: 10px 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; outline: none; }
+.search-bar input:focus { border-color: #07c160; }
+.search-bar button { padding: 10px 16px; background: #07c160; color: #fff; border: none; border-radius: 8px; font-size: 14px; cursor: pointer; white-space: nowrap; }
+.btn-clear { background: #999 !important; }
+.btn-export { background: #07c160 !important; }
+
+.filter-row { display: flex; gap: 8px; margin-bottom: 8px; }
+.filter-row select { flex: 1; padding: 10px 8px; border: 1px solid #ddd; border-radius: 8px; font-size: 13px; outline: none; background: #fff; -webkit-appearance: none; appearance: none; }
+
+.status-filters { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
+.status-btn {
+  padding: 6px 14px; border: 1px solid #ddd; border-radius: 16px; font-size: 13px;
+  background: #fff; color: #555; cursor: pointer; transition: all 0.2s; user-select: none;
+}
+.status-btn.active { background: #07c160; color: #fff; border-color: #07c160; }
+
+.table-wrapper { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 8px; overflow: hidden; font-size: 13px; min-width: 1100px; }
+thead th { background: #f0f0f0; padding: 10px 6px; text-align: left; font-weight: 600; color: #555; white-space: nowrap; position: sticky; top: 0; }
+tbody td { padding: 10px 6px; border-bottom: 1px solid #f0f0f0; vertical-align: middle; }
+tbody tr:last-child td { border-bottom: none; }
+td .btn-del { background: #e74c3c; color: #fff; border: none; padding: 5px 10px; border-radius: 4px; font-size: 12px; cursor: pointer; white-space: nowrap; }
+td .btn-del:active { opacity: 0.8; }
+
+.expired-badge, .soon-badge, .normal-badge, .unknown-badge { display: inline-block; padding: 3px 8px; border-radius: 10px; font-size: 12px; font-weight: 500; white-space: nowrap; }
+.expired-badge { background: #ffebee; color: #c62828; }
+.soon-badge { background: #fff3e0; color: #e65100; }
+.normal-badge { background: #e8f5e9; color: #2e7d32; }
+.unknown-badge { background: #f5f5f5; color: #999; }
+
+.empty-hint { text-align: center; padding: 40px 20px; color: #aaa; font-size: 15px; }
+.count-bar { font-size: 13px; color: #888; margin-bottom: 10px; }
+
+.btn-submit {
+  width: 100%; padding: 14px; background: #07c160; color: #fff; border: none; border-radius: 8px;
+  font-size: 16px; font-weight: 600; cursor: pointer; letter-spacing: 1px; margin-top: 6px; transition: opacity 0.2s;
+}
+.btn-submit:active { opacity: 0.85; }
+
+.toast { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.75); color: #fff; padding: 12px 24px; border-radius: 8px; font-size: 15px; z-index: 999; pointer-events: none; opacity: 0; transition: opacity 0.3s; }
+.toast.show { opacity: 1; }
+
+nav.tab-bar { position: fixed; bottom: 0; left: 0; right: 0; display: flex; background: #fff; border-top: 1px solid #e5e5e5; z-index: 100; }
+nav.tab-bar a { flex: 1; text-align: center; padding: 10px 0; font-size: 14px; color: #999; text-decoration: none; display: flex; flex-direction: column; align-items: center; gap: 2px; transition: color 0.2s; }
+nav.tab-bar a.active { color: #07c160; }
+nav.tab-bar a .tab-icon { font-size: 20px; line-height: 1; }
+</style>
+</head>
+<body>
+
+<header>
+  留样登记系统（云同步版）
+  <div class="cloud-badge" id="cloudBadge"><span class="dot"></span><span id="cloudText">连接中…</span></div>
+</header>
+
+<!-- ====== 登记页 ====== -->
+<div class="page active" id="page-register">
+  <div class="form-group">
+    <label>物料名称 *</label>
+    <div class="combobox-wrap" id="nameComboWrap">
+      <input type="text" id="fName" placeholder="选择或输入物料名称" maxlength="100" autocomplete="off">
+      <span class="dropdown-arrow">&#9662;</span>
+      <div class="combobox-dropdown" id="nameDropdown"></div>
+    </div>
+  </div>
+  <div class="form-group">
+    <label>物料编号 *</label>
+    <input type="text" id="fCode" placeholder="请输入物料编号" maxlength="50">
+  </div>
+  <div class="form-group">
+    <label>供应商名称</label>
+    <input type="text" id="fSupplier" placeholder="请输入供应商名称" maxlength="100">
+  </div>
+  <div class="form-group">
+    <label>留样日期 *</label>
+    <input type="date" id="fSampleDate">
+  </div>
+  <div class="form-group">
+    <label>留样量 *</label>
+    <input type="number" id="fSampleQty" placeholder="0" min="0" step="any" style="width:calc(100% - 40px);display:inline-block;vertical-align:middle;"><span style="display:inline-block;vertical-align:middle;padding-left:6px;font-size:14px;color:#666;">kg</span>
+  </div>
+  <div class="form-row">
+    <div class="form-group">
+      <label>保存天数</label>
+      <input type="number" id="fExpiryDays" placeholder="0" min="0" step="1">
+    </div>
+    <div class="form-group">
+      <label>保存年数</label>
+      <input type="number" id="fExpiryYears" placeholder="0" min="0" step="1">
+    </div>
+  </div>
+  <div class="form-group">
+    <label>存放位置 *</label>
+  </div>
+  <div class="form-row">
+    <div class="form-group">
+      <input type="text" id="fLoc1" placeholder="第一级" maxlength="50" list="loc1Datalist" autocomplete="off">
+      <datalist id="loc1Datalist"></datalist>
+    </div>
+    <div class="form-group">
+      <input type="text" id="fLoc2" placeholder="第二级" maxlength="50" list="loc2Datalist" autocomplete="off">
+      <datalist id="loc2Datalist"></datalist>
+    </div>
+    <div class="form-group">
+      <input type="text" id="fLoc3" placeholder="第三级" maxlength="50" list="loc3Datalist" autocomplete="off">
+      <datalist id="loc3Datalist"></datalist>
+    </div>
+  </div>
+  <div class="form-group">
+    <label>留样原因</label>
+    <div class="reason-presets" id="reasonPresets">
+      <span class="reason-preset" data-val="常规">常规</span>
+      <span class="reason-preset" data-val="退货">退货</span>
+      <span class="reason-preset" data-val="首月">首月</span>
+      <span class="reason-preset" data-val="异常">异常</span>
+    </div>
+    <div class="reason-tags" id="reasonTags"></div>
+    <input type="text" id="fReasonInput" placeholder="可自定义输入原因后回车添加" maxlength="50" autocomplete="off" list="reasonDatalist">
+    <datalist id="reasonDatalist"></datalist>
+  </div>
+  <div class="form-group">
+    <label>登记人 *</label>
+    <input type="text" id="fRegistrant" placeholder="请输入登记人姓名" maxlength="50">
+  </div>
+  <div class="form-group">
+    <label>备注</label>
+    <textarea id="fRemark" placeholder="备注信息（选填）" maxlength="500"></textarea>
+  </div>
+  <button class="btn-submit" onclick="submitForm()">提交登记</button>
+</div>
+
+<!-- ====== 汇总页 ====== -->
+<div class="page" id="page-summary">
+  <div class="search-bar">
+    <input type="text" id="searchInput" placeholder="搜索名称 / 编号 / 供应商 / 登记人" oninput="applyAllFilters()">
+    <button onclick="applyAllFilters()">搜索</button>
+    <button class="btn-clear" onclick="clearAllFilters()">清除</button>
+    <button class="btn-export" onclick="exportToExcel()">导出 Excel</button>
+  </div>
+  <div class="filter-row">
+    <select id="filterLoc1" onchange="onFilterLoc1Change()"><option value="">全部货架</option></select>
+    <select id="filterLoc2" onchange="onFilterLoc2Change()"><option value="">全部编号</option></select>
+    <select id="filterLoc3" onchange="applyAllFilters()"><option value="">全部层</option></select>
+  </div>
+  <div class="status-filters">
+    <span class="status-btn active" data-status="all" onclick="setStatusFilter('all')">全部</span>
+    <span class="status-btn" data-status="expired" onclick="setStatusFilter('expired')">已过期</span>
+    <span class="status-btn" data-status="soon" onclick="setStatusFilter('soon')">即将到期</span>
+    <span class="status-btn" data-status="normal" onclick="setStatusFilter('normal')">正常</span>
+  </div>
+  <div class="count-bar" id="countBar"></div>
+  <div class="table-wrapper">
+    <table>
+      <thead>
+        <tr>
+          <th>物料名称</th><th>物料编号</th><th>供应商</th><th>留样日期</th>
+          <th>留样量</th><th>保存期限</th><th>货架</th><th>编号</th><th>层</th>
+          <th>留样原因</th><th>登记人</th><th>登记时间</th><th>到期状态</th><th>备注</th><th>操作</th>
+        </tr>
+      </thead>
+      <tbody id="tableBody"></tbody>
+    </table>
+  </div>
+  <div class="empty-hint" id="emptyHint" style="display:none;">暂无留样记录</div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<nav class="tab-bar">
+  <a href="javascript:switchPage('register')" class="active" id="tabRegister"><span class="tab-icon">+</span><span>登记</span></a>
+  <a href="javascript:switchPage('summary')" id="tabSummary"><span class="tab-icon">&#9776;</span><span>汇总</span></a>
+</nav>
+
+<!-- Supabase 客户端 -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+/* ============================================================
+   配置区：把下面两项换成你自己的 Supabase 项目信息
+   1) 打开 https://app.supabase.com → 选你的项目
+   2) Project Settings → API → 复制 Project URL 和 anon public key
+   ============================================================ */
+const SUPABASE_URL = "https://aneryxogzmbxbrocidtq.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFuZXJ5eG9nem1ieGJyb2NpZHRxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM0OTY4NDgsImV4cCI6MjA5OTA3Mjg0OH0.eOpWb2JiZPkmmYMQ1eK0p8raNYqQH0T32UTNNRfCFDE";
+const TABLE = "sample_register";
+
+let supabase = null;
+let CACHE = [];   // 内存中的数据副本，用于本地筛选/下拉
+
+/* ========== 初始化 ========== */
+async function init() {
+  if (SUPABASE_URL.startsWith("YOUR_") || SUPABASE_ANON_KEY.startsWith("YOUR_")) {
+    setCloud(false, "未配置 Supabase key");
+    showToast("请先在源码顶部填入 SUPABASE_URL 和 ANON KEY");
+    return;
+  }
+  supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  setCloud(true, "已连接云端");
+
+  // 首次拉取
+  await reloadData();
+
+  // 实时订阅：他人增删改，本地秒刷新
+  supabase
+    .channel("sample_register_changes")
+    .on("postgres_changes", { event: "*", schema: "public", table: TABLE }, (payload) => {
+      reloadData();
+    })
+    .subscribe();
+}
+
+function setCloud(ok, text) {
+  const badge = document.getElementById("cloudBadge");
+  badge.classList.toggle("online", !!ok);
+  document.getElementById("cloudText").textContent = text;
+}
+
+/* ========== 数据层（Supabase 替代 localStorage） ========== */
+async function reloadData() {
+  const { data, error } = await supabase.from(TABLE).select("*").order("created_at", { ascending: false });
+  if (error) { showToast("读取失败：" + error.message); return; }
+  CACHE = data || [];
+  if (document.getElementById("page-summary").classList.contains("active")) {
+    refreshFilterSelects();
+    applyAllFilters();
+  }
+  refreshNameDropdown();
+  refreshLocationDatalists();
+  refreshReasonDatalist();
+}
+
+async function insertRecord(rec) {
+  const { error } = await supabase.from(TABLE).insert([rec]);
+  if (error) { showToast("提交失败：" + error.message); return false; }
+  return true;
+}
+
+async function deleteRecord(id) {
+  const { error } = await supabase.from(TABLE).delete().eq("id", id);
+  if (error) { showToast("删除失败：" + error.message); return; }
+  // 实时订阅会触发 reloadData，这里不必手动刷新
+}
+
+/* ========== 工具函数 ========== */
+function showToast(msg) {
+  const t = document.getElementById("toast");
+  t.textContent = msg; t.classList.add("show");
+  clearTimeout(t._tid);
+  t._tid = setTimeout(() => t.classList.remove("show"), 1800);
+}
+function escHtml(str) {
+  if (!str) return "";
+  return String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+function formatTime(ts) {
+  if (!ts) return "";
+  const d = new Date(ts);
+  const pad = (n) => (n < 10 ? "0" + n : n);
+  return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()) +
+         " " + pad(d.getHours()) + ":" + pad(d.getMinutes()) + ":" + pad(d.getSeconds());
+}
+
+/* ========== 页面切换 ========== */
+window.switchPage = function (name) {
+  document.querySelectorAll(".page").forEach((p) => p.classList.remove("active"));
+  document.querySelectorAll(".tab-bar a").forEach((a) => a.classList.remove("active"));
+  if (name === "register") {
+    document.getElementById("page-register").classList.add("active");
+    document.getElementById("tabRegister").classList.add("active");
+  } else {
+    document.getElementById("page-summary").classList.add("active");
+    document.getElementById("tabSummary").classList.add("active");
+    refreshFilterSelects();
+    applyAllFilters();
+  }
+};
+
+/* ========== 历史值收集（来自云端 CACHE） ========== */
+function getHistoryNames() { const s = {}; CACHE.forEach((r) => { if (r.name) s[r.name] = true; }); return Object.keys(s).sort(); }
+function getLocationSets() {
+  const s1 = {}, s2 = {}, s3 = {};
+  CACHE.forEach((r) => { if (r.loc1) s1[r.loc1] = true; if (r.loc2) s2[r.loc2] = true; if (r.loc3) s3[r.loc3] = true; });
+  return { l1: Object.keys(s1).sort(), l2: Object.keys(s2).sort(), l3: Object.keys(s3).sort() };
+}
+function getLocationTrie() {
+  const trie = {};
+  CACHE.forEach((r) => {
+    const l1 = r.loc1 || "", l2 = r.loc2 || "", l3 = r.loc3 || "";
+    if (!l1) return;
+    if (!trie[l1]) trie[l1] = {};
+    if (!l2) return;
+    if (!trie[l1][l2]) trie[l1][l2] = {};
+    if (l3) trie[l1][l2][l3] = true;
+  });
+  return trie;
+}
+function getHistoryReasons() {
+  const s = {};
+  CACHE.forEach((r) => { if (r.reasons) r.reasons.split("、").forEach((x) => { if (x) s[x] = true; }); });
+  return Object.keys(s).sort();
+}
+
+/* ========== 物料名称 Combobox ========== */
+function refreshNameDropdown() {
+  const names = getHistoryNames();
+  const dd = document.getElementById("nameDropdown");
+  if (names.length === 0) { dd.innerHTML = ""; return; }
+  dd.innerHTML = names.map((n) => `<div class="option-item" data-value="${escHtml(n)}">${escHtml(n)}</div>`).join("");
+}
+const nameInput = document.getElementById("fName");
+const nameDropdown = document.getElementById("nameDropdown");
+nameInput.addEventListener("focus", () => { refreshNameDropdown(); nameDropdown.classList.add("show"); });
+nameInput.addEventListener("input", () => {
+  refreshNameDropdown();
+  const val = nameInput.value.trim().toLowerCase();
+  nameDropdown.querySelectorAll(".option-item").forEach((item) => {
+    const tv = (item.getAttribute("data-value") || "").toLowerCase();
+    item.style.display = tv.indexOf(val) !== -1 ? "" : "none";
+  });
+  nameDropdown.classList.add("show");
+});
+nameDropdown.addEventListener("mousedown", (e) => {
+  const item = e.target.closest(".option-item");
+  if (item) { nameInput.value = item.getAttribute("data-value") || ""; nameDropdown.classList.remove("show"); e.preventDefault(); }
+});
+document.addEventListener("click", (e) => { if (!document.getElementById("nameComboWrap").contains(e.target)) nameDropdown.classList.remove("show"); });
+
+/* ========== 存放位置 Datalist ========== */
+function refreshLocationDatalists() {
+  const sets = getLocationSets();
+  const fill = (id, arr) => { document.getElementById(id).innerHTML = arr.map((v) => `<option value="${escHtml(v)}">`).join(""); };
+  fill("loc1Datalist", sets.l1); fill("loc2Datalist", sets.l2); fill("loc3Datalist", sets.l3);
+}
+
+/* ========== 留样原因 ========== */
+let selectedReasons = [];
+function refreshReasonDatalist() {
+  const reasons = getHistoryReasons();
+  document.getElementById("reasonDatalist").innerHTML = reasons.map((v) => `<option value="${escHtml(v)}">`).join("");
+}
+function renderReasonTags() {
+  const c = document.getElementById("reasonTags");
+  c.innerHTML = selectedReasons.map((r, i) => `<span class="reason-tag">${escHtml(r)}<span class="tag-close" data-idx="${i}">&times;</span></span>`).join("");
+  document.querySelectorAll(".reason-preset").forEach((btn) => {
+    btn.classList.toggle("selected", selectedReasons.indexOf(btn.getAttribute("data-val")) !== -1);
+  });
+}
+function addReason(val) { val = val.trim(); if (!val || selectedReasons.indexOf(val) !== -1) return; selectedReasons.push(val); renderReasonTags(); refreshReasonDatalist(); }
+function removeReason(idx) { selectedReasons.splice(idx, 1); renderReasonTags(); }
+document.getElementById("reasonPresets").addEventListener("click", (e) => {
+  const btn = e.target.closest(".reason-preset"); if (!btn) return;
+  const val = btn.getAttribute("data-val");
+  const idx = selectedReasons.indexOf(val);
+  idx === -1 ? addReason(val) : removeReason(idx);
+});
+document.getElementById("reasonTags").addEventListener("click", (e) => {
+  const close = e.target.closest(".tag-close"); if (close) removeReason(parseInt(close.getAttribute("data-idx")));
+});
+document.getElementById("fReasonInput").addEventListener("keydown", (e) => {
+  if (e.key === "Enter") { e.preventDefault(); addReason(this.value); this.value = ""; }
+});
+
+/* ========== 提交表单 ========== */
+window.submitForm = async function () {
+  const nameVal = document.getElementById("fName").value.trim();
+  const codeVal = document.getElementById("fCode").value.trim();
+  const supplierVal = document.getElementById("fSupplier").value.trim();
+  const sampleDateVal = document.getElementById("fSampleDate").value;
+  const qtyRaw = document.getElementById("fSampleQty").value.trim();
+  const daysRaw = document.getElementById("fExpiryDays").value.trim();
+  const yearsRaw = document.getElementById("fExpiryYears").value.trim();
+  const loc1Val = document.getElementById("fLoc1").value.trim();
+  const loc2Val = document.getElementById("fLoc2").value.trim();
+  const loc3Val = document.getElementById("fLoc3").value.trim();
+  const regVal = document.getElementById("fRegistrant").value.trim();
+  const remarkVal = document.getElementById("fRemark").value.trim();
+
+  if (!nameVal || !codeVal || !regVal || qtyRaw === "") { showToast("请填写必填字段：物料名称、编号、留样量、登记人"); return; }
+  if (!sampleDateVal) { showToast("请选择留样日期"); return; }
+  if (!loc1Val) { showToast("请填写存放位置（第一级）"); return; }
+  const qtyNum = parseFloat(qtyRaw);
+  if (isNaN(qtyNum) || qtyNum < 0) { showToast("留样量请填写有效数字"); return; }
+  const daysNum = parseInt(daysRaw) || 0, yearsNum = parseInt(yearsRaw) || 0;
+  if (daysNum < 0 || yearsNum < 0) { showToast("保存天数/年数请填写非负整数"); return; }
+
+  const rec = {
+    name: nameVal, code: codeVal, supplier: supplierVal, sample_date: sampleDateVal,
+    sample_qty: qtyNum, expiry_days: daysNum, expiry_years: yearsNum,
+    loc1: loc1Val, loc2: loc2Val, loc3: loc3Val,
+    reasons: selectedReasons.join("、"), registrant: regVal, remark: remarkVal
+  };
+
+  const ok = await insertRecord(rec);
+  if (!ok) return;
+  showToast("登记成功（已同步云端）");
+
+  document.getElementById("fName").value = ""; document.getElementById("fCode").value = "";
+  document.getElementById("fSupplier").value = ""; document.getElementById("fSampleDate").value = "";
+  document.getElementById("fSampleQty").value = ""; document.getElementById("fExpiryDays").value = "";
+  document.getElementById("fExpiryYears").value = ""; document.getElementById("fLoc1").value = "";
+  document.getElementById("fLoc2").value = ""; document.getElementById("fLoc3").value = "";
+  document.getElementById("fRegistrant").value = ""; document.getElementById("fRemark").value = "";
+  selectedReasons = []; renderReasonTags();
+};
+
+/* ========== 到期状态 ========== */
+function getExpiryStatus(r) {
+  if (!r.sample_date) return "unknown";
+  const d = new Date(r.sample_date + "T00:00:00");
+  if (isNaN(d.getTime())) return "unknown";
+  const days = (r.expiry_days || 0) + (r.expiry_years || 0) * 365;
+  if (days <= 0) return "unknown";
+  const expiryDate = new Date(d.getTime() + days * 86400000);
+  const today = new Date(); today.setHours(0, 0, 0, 0); expiryDate.setHours(0, 0, 0, 0);
+  if (expiryDate < today) return "expired";
+  const diff = Math.ceil((expiryDate - today) / 86400000);
+  return diff <= 30 ? "soon" : "normal";
+}
+function renderExpiryBadge(s) {
+  return s === "expired" ? '<span class="expired-badge">已过期</span>'
+       : s === "soon" ? '<span class="soon-badge">即将到期</span>'
+       : s === "normal" ? '<span class="normal-badge">正常</span>'
+       : '<span class="unknown-badge">未设置</span>';
+}
+function formatExpiryStr(r) {
+  const p = [];
+  if (r.expiry_years) p.push(r.expiry_years + "年");
+  if (r.expiry_days) p.push(r.expiry_days + "天");
+  return p.length ? p.join("") : "-";
+}
+
+/* ========== 汇总筛选 ========== */
+function refreshFilterSelects() {
+  const trie = getLocationTrie();
+  const f1 = document.getElementById("filterLoc1"), f2 = document.getElementById("filterLoc2"), f3 = document.getElementById("filterLoc3");
+  const cur1 = f1.value, cur2 = f2.value, cur3 = f3.value;
+  const l1 = Object.keys(trie).sort();
+  f1.innerHTML = '<option value="">全部货架</option>' + l1.map((o) => `<option value="${escHtml(o)}"${o === cur1 ? " selected" : ""}>${escHtml(o)}</option>`).join("");
+  const refreshF2 = () => {
+    const sub = trie[f1.value] || {};
+    f2.innerHTML = '<option value="">全部编号</option>' + Object.keys(sub).sort().map((o) => `<option value="${escHtml(o)}"${o === cur2 ? " selected" : ""}>${escHtml(o)}</option>`).join("");
+    const sub2 = (trie[f1.value] || {})[f2.value] || {};
+    f3.innerHTML = '<option value="">全部层</option>' + Object.keys(sub2).sort().map((o) => `<option value="${escHtml(o)}"${o === cur3 ? " selected" : ""}>${escHtml(o)}</option>`).join("");
+  };
+  refreshF2();
+}
+window.onFilterLoc1Change = function () { refreshFilterSelects(); applyAllFilters(); };
+window.onFilterLoc2Change = function () { refreshFilterSelects(); applyAllFilters(); };
+
+let currentStatusFilter = "all";
+window.setStatusFilter = function (status) {
+  currentStatusFilter = status;
+  document.querySelectorAll(".status-btn").forEach((b) => b.classList.toggle("active", b.getAttribute("data-status") === status));
+  applyAllFilters();
+};
+
+window.applyAllFilters = function () {
+  const keyword = (document.getElementById("searchInput").value || "").trim().toLowerCase();
+  const fl1 = document.getElementById("filterLoc1").value, fl2 = document.getElementById("filterLoc2").value, fl3 = document.getElementById("filterLoc3").value;
+  const filtered = (CACHE || []).filter((r) => {
+    if (keyword) {
+      const m = (r.name || "").toLowerCase().indexOf(keyword) !== -1 ||
+                (r.code || "").toLowerCase().indexOf(keyword) !== -1 ||
+                (r.supplier || "").toLowerCase().indexOf(keyword) !== -1 ||
+                (r.registrant || "").toLowerCase().indexOf(keyword) !== -1;
+      if (!m) return false;
+    }
+    if (fl1 && r.loc1 !== fl1) return false;
+    if (fl2 && r.loc2 !== fl2) return false;
+    if (fl3 && r.loc3 !== fl3) return false;
+    if (currentStatusFilter !== "all" && getExpiryStatus(r) !== currentStatusFilter) return false;
+    return true;
+  });
+  const tbody = document.getElementById("tableBody"), emptyHint = document.getElementById("emptyHint"), countBar = document.getElementById("countBar");
+  if (filtered.length === 0) {
+    tbody.innerHTML = ""; emptyHint.style.display = "block"; countBar.textContent = "共 0 条记录";
+  } else {
+    emptyHint.style.display = "none";
+    countBar.textContent = "共 " + CACHE.length + " 条记录，当前显示 " + filtered.length + " 条";
+    tbody.innerHTML = filtered.map((r) => {
+      const s = getExpiryStatus(r);
+      return `<tr>
+        <td>${escHtml(r.name)}</td><td>${escHtml(r.code)}</td><td>${escHtml(r.supplier)}</td>
+        <td>${escHtml(r.sample_date)}</td><td>${r.sample_qty} kg</td><td>${escHtml(formatExpiryStr(r))}</td>
+        <td>${escHtml(r.loc1)}</td><td>${escHtml(r.loc2)}</td><td>${escHtml(r.loc3)}</td>
+        <td>${escHtml(r.reasons || "")}</td><td>${escHtml(r.registrant)}</td><td>${formatTime(r.created_at)}</td>
+        <td>${renderExpiryBadge(s)}</td><td>${escHtml(r.remark)}</td>
+        <td><button class="btn-del" onclick="deleteRecord(${r.id})">删除</button></td>
+      </tr>`;
+    }).join("");
+  }
+};
+
+window.clearAllFilters = function () {
+  document.getElementById("searchInput").value = "";
+  document.getElementById("filterLoc1").value = ""; document.getElementById("filterLoc2").value = ""; document.getElementById("filterLoc3").value = "";
+  currentStatusFilter = "all";
+  document.querySelectorAll(".status-btn").forEach((b) => b.classList.toggle("active", b.getAttribute("data-status") === "all"));
+  refreshFilterSelects(); applyAllFilters();
+};
+
+/* ========== 导出 Excel（沿用 SheetJS） ========== */
+window.exportToExcel = function () {
+  if (typeof XLSX === "undefined") { showToast("导出组件未加载"); return; }
+  const data = (CACHE || []).filter((r) => {
+    const keyword = (document.getElementById("searchInput").value || "").trim().toLowerCase();
+    const fl1 = document.getElementById("filterLoc1").value, fl2 = document.getElementById("filterLoc2").value, fl3 = document.getElementById("filterLoc3").value;
+    if (keyword) { const m = (r.name||"").toLowerCase().indexOf(keyword)!==-1||(r.code||"").toLowerCase().indexOf(keyword)!==-1||(r.supplier||"").toLowerCase().indexOf(keyword)!==-1||(r.registrant||"").toLowerCase().indexOf(keyword)!==-1; if(!m) return false; }
+    if (fl1 && r.loc1 !== fl1) return false; if (fl2 && r.loc2 !== fl2) return false; if (fl3 && r.loc3 !== fl3) return false;
+    if (currentStatusFilter !== "all" && getExpiryStatus(r) !== currentStatusFilter) return false;
+    return true;
+  });
+  if (data.length === 0) { showToast("没有可导出的数据"); return; }
+  const headers = ["物料名称","物料编号","供应商名称","留样日期","留样量(kg)","货架","编号","层","保存天数","保存年数","保存期限","留样原因","登记人","登记时间","备注","到期状态"];
+  const rows = [headers];
+  data.forEach((r) => {
+    const s = getExpiryStatus(r);
+    const st = s === "expired" ? "已过期" : s === "soon" ? "即将到期" : s === "normal" ? "正常" : "未设置";
+    rows.push([r.name, r.code, r.supplier, r.sample_date, r.sample_qty, r.loc1, r.loc2, r.loc3, r.expiry_days||0, r.expiry_years||0, formatExpiryStr(r), r.reasons||"", r.registrant, formatTime(r.created_at), r.remark||"", st]);
+  });
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+  const colW = [];
+  for (let c = 0; c < headers.length; c++) { let mx = headers[c].length; for (let ri = 1; ri < rows.length; ri++) { const v = String(rows[ri][c] || ""); if (v.length > mx) mx = v.length; } colW.push({ wch: Math.min(mx + 4, 40) }); }
+  ws["!cols"] = colW;
+  XLSX.utils.book_append_sheet(wb, ws, "留样登记汇总");
+  const d = new Date(), pad = (n) => (n < 10 ? "0" + n : n);
+  XLSX.writeFile(wb, "留样登记表_" + d.getFullYear() + "-" + pad(d.getMonth()+1) + "-" + pad(d.getDate()) + ".xlsx");
+  showToast("导出成功");
+};
+
+/* ========== 启动 ========== */
+init();
+</script>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+</body>
+</html>
