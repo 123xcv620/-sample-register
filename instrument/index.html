@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>仪器使用登记系统</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;background:#f5f5f5;color:#333;min-height:100vh;padding-bottom:70px}
+header{background:linear-gradient(135deg,#7b1fa2,#9c27b0);color:#fff;text-align:center;padding:14px 0;font-size:18px;font-weight:600;position:sticky;top:0;z-index:100}
+.cloud-badge{display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:400;margin-top:4px}
+.cloud-badge .dot{width:8px;height:8px;border-radius:50%;background:#ffd54f}
+.cloud-badge.online .dot{background:#a5ffce}
+.page{display:none;padding:16px}
+.page.active{display:block}
+
+.form-group{margin-bottom:12px}
+.form-group label{display:block;font-size:14px;color:#666;margin-bottom:5px;font-weight:500}
+.form-group input,.form-group textarea,.form-group select{width:100%;padding:10px 12px;border:1px solid #ddd;border-radius:8px;font-size:14px;background:#fff;outline:none;-webkit-appearance:none;appearance:none}
+.form-group input:focus,.form-group textarea:focus,.form-group select:focus{border-color:#7b1fa2}
+.form-group textarea{resize:vertical;min-height:60px}
+.form-row{display:flex;gap:10px}.form-row .form-group{flex:1}
+
+.duration-display{background:#f3e5f5;border:1px solid #ce93d8;border-radius:8px;padding:10px 14px;text-align:center;font-size:18px;font-weight:700;color:#7b1fa2;margin-bottom:12px}
+
+.btn-submit{width:100%;padding:14px;background:#7b1fa2;color:#fff;border:none;border-radius:8px;font-size:16px;font-weight:600;cursor:pointer;margin-top:6px}
+.btn-submit:active{opacity:.85}
+
+.search-bar{display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap}
+.search-bar input{flex:1;min-width:120px;padding:10px 12px;border:1px solid #ddd;border-radius:8px;font-size:14px;outline:none}
+.search-bar input:focus{border-color:#7b1fa2}
+.search-bar button{padding:10px 14px;border:none;border-radius:8px;font-size:13px;cursor:pointer;white-space:nowrap;background:#7b1fa2;color:#fff}
+
+.card{background:#fff;border-radius:10px;padding:14px;margin-bottom:10px;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+.card-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;flex-wrap:wrap;gap:6px}
+.card-title{font-size:15px;font-weight:600;color:#333}
+.card-badge{font-size:12px;padding:2px 10px;border-radius:10px;font-weight:500;background:#f3e5f5;color:#7b1fa2}
+.duration-badge{font-size:14px;padding:3px 12px;border-radius:12px;font-weight:600;white-space:nowrap}
+.card-row{display:flex;flex-wrap:wrap;gap:4px 16px;font-size:13px;color:#555;margin-bottom:4px}
+.card-row span{white-space:nowrap}
+.card-actions{margin-top:8px;display:flex;gap:8px}
+.btn-del{background:#ff4d4f;color:#fff;border:none;padding:6px 14px;border-radius:6px;font-size:13px;cursor:pointer}.btn-del:active{opacity:.8}
+
+.count-bar{font-size:13px;color:#888;margin-bottom:10px}
+.empty-hint{text-align:center;padding:40px 20px;color:#aaa;font-size:15px}
+
+.toast{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(0,0,0,.75);color:#fff;padding:12px 24px;border-radius:8px;font-size:15px;z-index:999;pointer-events:none;opacity:0;transition:opacity .3s}
+.toast.show{opacity:1}
+
+nav.tab-bar{position:fixed;bottom:0;left:0;right:0;display:flex;background:#fff;border-top:1px solid #e5e5e5;z-index:100}
+nav.tab-bar a{flex:1;text-align:center;padding:8px 0;font-size:12px;color:#999;text-decoration:none;display:flex;flex-direction:column;align-items:center;gap:2px;transition:color .2s}
+nav.tab-bar a.active{color:#7b1fa2}
+nav.tab-bar a .tab-icon{font-size:18px;line-height:1}
+
+/* 汇总表格 */
+.summary-table{width:100%;border-collapse:collapse;background:#fff;font-size:13px;min-width:700px}
+.summary-table th{background:#f0f0f0;padding:8px 6px;text-align:left;white-space:nowrap}
+.summary-table td{padding:8px 6px}
+.summary-table tr{border-bottom:1px solid #f0f0f0}
+</style>
+</head>
+<body>
+
+<header>仪器使用登记系统
+  <div class="cloud-badge" id="cloudBadge"><span class="dot"></span><span id="cloudText">连接中…</span></div>
+</header>
+
+<!-- ====== 界面1-登记 ====== -->
+<div class="page active" id="page-register">
+  <div class="form-group"><label>仪器名称 *</label><input type="text" id="fInstrumentName" placeholder="请输入仪器名称" maxlength="100"></div>
+  <div class="form-row">
+    <div class="form-group"><label>开始使用时间 *</label><input type="datetime-local" id="fStartTime"></div>
+    <div class="form-group"><label>结束使用时间 *</label><input type="datetime-local" id="fEndTime"></div>
+  </div>
+  <div class="duration-display" id="durationDisplay">使用时长：--</div>
+  <div class="form-group"><label>仪器状态 *</label>
+    <select id="fStatus">
+      <option value="正常">正常</option>
+      <option value="故障">故障</option>
+      <option value="维修中">维修中</option>
+      <option value="待维修">待维修</option>
+      <option value="报废">报废</option>
+      <option value="停用">停用</option>
+    </select>
+  </div>
+  <div class="form-group"><label>使用人 *</label><input type="text" id="fUserName" placeholder="请输入使用人姓名" maxlength="50"></div>
+  <div class="form-group"><label>备注</label><textarea id="fRemark" placeholder="其他需要说明的情况" maxlength="500" rows="3"></textarea></div>
+  <button class="btn-submit" onclick="submitInstrument()">提交登记</button>
+</div>
+
+<!-- ====== 界面2-汇总 ====== -->
+<div class="page" id="page-summary">
+  <div class="search-bar">
+    <input type="text" id="searchInput" placeholder="搜索仪器名称/使用人" oninput="renderSummary()">
+    <button onclick="renderSummary()">搜索</button>
+    <button onclick="exportExcel()" style="background:#4caf50">导出 Excel</button>
+  </div>
+  <div class="count-bar" id="summaryCount"></div>
+  <div style="overflow-x:auto">
+    <table class="summary-table">
+      <thead><tr>
+        <th>仪器名称</th><th>开始时间</th><th>结束时间</th><th>使用时长</th><th>仪器状态</th><th>使用人</th><th>备注</th><th>操作</th>
+      </tr></thead>
+      <tbody id="summaryTable"></tbody>
+    </table>
+  </div>
+  <div class="empty-hint" id="summaryEmpty" style="display:none">暂无记录</div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<nav class="tab-bar">
+  <a href="javascript:switchTab('register')" class="active" id="tabRegister"><span class="tab-icon">+</span><span>登记</span></a>
+  <a href="javascript:switchTab('summary')" id="tabSummary"><span class="tab-icon">&#9776;</span><span>汇总</span></a>
+</nav>
+
+<script src="../supabase-js.min.js"></script>
+<script>
+const SUPABASE_URL = "https://aneryxogzmbxbrocidtq.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFuZXJ5eG9nem1ieGJyb2NpZHRxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM0OTY4NDgsImV4cCI6MjA5OTA3Mjg0OH0.eOpWb2JiZPkmmYMQ1eK0p8raNYqQH0T32UTNNRfCFDE";
+const TABLE = "instrument_register";
+
+let sbClient = null, CACHE = [];
+
+function $(id){return document.getElementById(id)}
+function showToast(msg){const t=$("toast");t.textContent=msg;t.classList.add("show");clearTimeout(t._tid);t._tid=setTimeout(()=>t.classList.remove("show"),1800)}
+function formatTime(ts){if(!ts)return"";const d=new Date(ts),pad=n=>String(n).padStart(2,"0");return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate())+" "+pad(d.getHours())+":"+pad(d.getMinutes())}
+function esc(s){return s?String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"):""}
+
+function setCloud(ok,text){$("cloudBadge").classList.toggle("online",!!ok);$("cloudText").textContent=text}
+
+/* ====== 计算时长 ====== */
+function calcDuration(){const s=$("fStartTime").value,e=$("fEndTime").value;
+  if(!s||!e){$("durationDisplay").textContent="使用时长：--";return""}
+  const ds=new Date(s),de=new Date(e);
+  if(ds>=de){$("durationDisplay").textContent="结束时间必须晚于开始时间";return""}
+  const diff=Math.round((de-ds)/(1000*60));const h=Math.floor(diff/60),m=diff%60;
+  let t=(h>0?h+"小时":"")+(m>0?m+"分钟":"h===0&&m===0?"<1分钟":"");
+  $("durationDisplay").textContent="使用时长："+t;
+  return t;
+}
+$("fStartTime").addEventListener("change",calcDuration);
+$("fEndTime").addEventListener("change",calcDuration);
+
+/* ====== 初始化 ====== */
+async function init(){
+  sbClient=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
+  setCloud(true,"已连接云端");
+  await reloadData();
+  sbClient.channel("instrument_changes").on("postgres_changes",{event:"*",schema:"public",table:TABLE},()=>reloadData()).subscribe();
+}
+async function reloadData(){
+  const{data,error}=await sbClient.from(TABLE).select("*").order("created_at",{ascending:false});
+  if(error){showToast("读取失败："+error.message);return}
+  CACHE=data||[];
+  if($("page-summary").classList.contains("active"))renderSummary();
+}
+
+/* ====== Tab 切换 ====== */
+window.switchTab=function(name){
+  document.querySelectorAll(".page").forEach(p=>p.classList.remove("active"));
+  document.querySelectorAll(".tab-bar a").forEach(a=>a.classList.remove("active"));
+  $("page-"+name).classList.add("active");$("tab"+name.charAt(0).toUpperCase()+name.slice(1)).classList.add("active");
+  if(name==="summary")renderSummary();
+};
+
+/* ====== 提交登记 ====== */
+window.submitInstrument=async function(){
+  const n=$("fInstrumentName").value.trim(),s=$("fStartTime").value,e=$("fEndTime").value;
+  const st=$("fStatus").value,u=$("fUserName").value.trim(),r=$("fRemark").value.trim();
+  if(!n||!s||!e||!u){showToast("请填写所有必填项");return}
+  const ds=new Date(s),de=new Date(e);
+  if(ds>=de){showToast("结束时间必须晚于开始时间");return}
+  const dur=calcDuration();
+  const rec={instrument_name:n,start_time:s,end_time:e,usage_duration:dur,instrument_status:st,user_name:u,remark:r};
+  const{error}=await sbClient.from(TABLE).insert([rec]);
+  if(error){showToast("提交失败："+error.message);return}
+  showToast("登记成功");
+  $("fInstrumentName").value="";$("fStartTime").value="";$("fEndTime").value="";$("fUserName").value="";$("fRemark").value="";$("fStatus").value="正常";
+  $("durationDisplay").textContent="使用时长：--";
+};
+
+/* ====== 汇总 ====== */
+function renderSummary(){
+  let list=CACHE||[];
+  const kw=($("searchInput").value||"").trim().toLowerCase();
+  if(kw)list=list.filter(r=>(r.instrument_name||"").toLowerCase().includes(kw)||(r.user_name||"").toLowerCase().includes(kw));
+  $("summaryCount").textContent="共 "+CACHE.length+" 条，当前显示 "+list.length+" 条";
+  if(list.length===0){$("summaryTable").innerHTML="";$("summaryEmpty").style.display="block";return}
+  $("summaryEmpty").style.display="none";
+  $("summaryTable").innerHTML=list.map(r=>`<tr>
+    <td style="padding:8px 6px;font-weight:500">${esc(r.instrument_name)}</td>
+    <td style="padding:8px 6px">${formatTime(r.start_time)}</td>
+    <td style="padding:8px 6px">${formatTime(r.end_time)}</td>
+    <td style="padding:8px 6px"><span class="duration-badge" style="background:#f3e5f5;color:#7b1fa2">${esc(r.usage_duration)}</span></td>
+    <td style="padding:8px 6px">${esc(r.instrument_status)}</td>
+    <td style="padding:8px 6px">${esc(r.user_name)}</td>
+    <td style="padding:8px 6px;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.remark||"--")}</td>
+    <td style="padding:8px 6px"><button class="btn-del" onclick="doDelete(${r.id})">删除</button></td>
+  </tr>`).join("");
+}
+window.doDelete=async function(id){if(!confirm("确认删除此记录？"))return;const{error}=await sbClient.from(TABLE).delete().eq("id",id);if(error){showToast("删除失败："+error.message);return}showToast("已删除");reloadData()};
+
+/* ====== 导出 Excel ====== */
+window.exportExcel=function(){
+  if(typeof XLSX==="undefined"){showToast("导出组件未加载");return}
+  let list=CACHE||[];
+  const kw=($("searchInput").value||"").trim().toLowerCase();
+  if(kw)list=list.filter(r=>(r.instrument_name||"").toLowerCase().includes(kw)||(r.user_name||"").toLowerCase().includes(kw));
+  if(!list.length){showToast("没有可导出的数据");return}
+  const h=["仪器名称","开始时间","结束时间","使用时长","仪器状态","使用人","备注","登记时间"];
+  const rows=[h];
+  list.forEach(r=>rows.push([r.instrument_name,formatTime(r.start_time),formatTime(r.end_time),r.usage_duration,r.instrument_status,r.user_name,r.remark||"",formatTime(r.created_at)]));
+  const wb=XLSX.utils.book_new(),ws=XLSX.utils.aoa_to_sheet(rows);
+  const cw=[];for(let c=0;c<h.length;c++){let m=h[c].length;for(let ri=1;ri<rows.length;ri++){const v=String(rows[ri][c]||"");if(v.length>m)m=v.length}cw.push({wch:Math.min(m+4,50)})}
+  ws["!cols"]=cw;XLSX.utils.book_append_sheet(wb,ws,"仪器使用登记汇总");
+  const d=new Date();XLSX.writeFile(wb,"仪器使用登记表_"+d.getFullYear()+"-"+(d.getMonth()+1)+"-"+d.getDate()+".xlsx");showToast("导出成功");
+};
+
+init();
+</script>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+</body>
+</html>
