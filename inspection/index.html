@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>送检登记系统</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;background:#f5f5f5;color:#333;min-height:100vh;padding-bottom:70px}
+header{background:linear-gradient(135deg,#1890ff,#096dd9);color:#fff;text-align:center;padding:14px 0;font-size:18px;font-weight:600;position:sticky;top:0;z-index:100}
+.cloud-badge{display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:400;margin-top:4px}
+.cloud-badge .dot{width:8px;height:8px;border-radius:50%;background:#ffd54f}
+.cloud-badge.online .dot{background:#a5ffce}
+.page{display:none;padding:16px}
+.page.active{display:block}
+
+.form-group{margin-bottom:12px}
+.form-group label{display:block;font-size:14px;color:#666;margin-bottom:5px;font-weight:500}
+.form-group input,.form-group textarea,.form-group select{width:100%;padding:10px 12px;border:1px solid #ddd;border-radius:8px;font-size:14px;background:#fff;outline:none;-webkit-appearance:none;appearance:none}
+.form-group input:focus,.form-group textarea:focus,.form-group select:focus{border-color:#1890ff}
+.form-group textarea{resize:vertical;min-height:60px}
+.form-row{display:flex;gap:10px}.form-row .form-group{flex:1}
+
+.photo-preview{width:100%;max-height:200px;object-fit:contain;border:1px solid #ddd;border-radius:8px;margin-top:6px;display:none}
+.photo-upload{display:flex;align-items:center;gap:8px}
+.photo-upload label{display:inline-block;padding:8px 16px;background:#f0f0f0;border:1px dashed #ccc;border-radius:6px;cursor:pointer;font-size:13px;color:#666}
+.photo-upload label:active{background:#e0e0e0}
+.photo-upload input[type=file]{display:none}
+
+.btn-submit{width:100%;padding:14px;background:#1890ff;color:#fff;border:none;border-radius:8px;font-size:16px;font-weight:600;cursor:pointer;margin-top:6px}
+.btn-submit:active{opacity:.85}
+
+.search-bar{display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap}
+.search-bar input{flex:1;min-width:120px;padding:10px 12px;border:1px solid #ddd;border-radius:8px;font-size:14px;outline:none}
+.search-bar input:focus{border-color:#1890ff}
+.search-bar button{padding:10px 14px;border:none;border-radius:8px;font-size:13px;cursor:pointer;white-space:nowrap;background:#1890ff;color:#fff}
+
+.filter-row{display:flex;gap:8px;margin-bottom:8px}.filter-row select{flex:1;padding:10px 8px;border:1px solid #ddd;border-radius:8px;font-size:13px;outline:none;background:#fff;-webkit-appearance:none;appearance:none}
+
+.status-tabs{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap}
+.status-tab{padding:6px 14px;border:1px solid #ddd;border-radius:16px;font-size:13px;background:#fff;color:#555;cursor:pointer;transition:all .2s}
+.status-tab.active{background:#1890ff;color:#fff;border-color:#1890ff}
+
+.card{background:#fff;border-radius:10px;padding:14px;margin-bottom:10px;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+.card-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;flex-wrap:wrap;gap:6px}
+.card-title{font-size:15px;font-weight:600;color:#333}
+.card-badge{font-size:12px;padding:2px 10px;border-radius:10px;font-weight:500}
+.badge-pending{background:#fff3e0;color:#e65100}
+.badge-received{background:#e3f2fd;color:#1565c0}
+.badge-done{background:#e8f5e9;color:#2e7d32}
+.badge-overdue{background:#ffebee;color:#c62828;animation:pulse 1.5s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.6}}
+.card-row{display:flex;flex-wrap:wrap;gap:4px 16px;font-size:13px;color:#555;margin-bottom:4px}
+.card-row span{white-space:nowrap}
+.card-photo{max-width:100%;max-height:160px;border-radius:6px;margin-top:6px;cursor:pointer}
+.card-actions{margin-top:8px;display:flex;gap:8px;flex-wrap:wrap}
+.btn-action{padding:6px 16px;border:none;border-radius:6px;font-size:13px;cursor:pointer;font-weight:500}
+.btn-receive{background:#52c41a;color:#fff}
+.btn-done{background:#1890ff;color:#fff}
+.btn-del{background:#ff4d4f;color:#fff}
+.btn-action:active{opacity:.8}
+
+.count-bar{font-size:13px;color:#888;margin-bottom:10px}
+.empty-hint{text-align:center;padding:40px 20px;color:#aaa;font-size:15px}
+
+.toast{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(0,0,0,.75);color:#fff;padding:12px 24px;border-radius:8px;font-size:15px;z-index:999;pointer-events:none;opacity:0;transition:opacity .3s}
+.toast.show{opacity:1}
+
+nav.tab-bar{position:fixed;bottom:0;left:0;right:0;display:flex;background:#fff;border-top:1px solid #e5e5e5;z-index:100}
+nav.tab-bar a{flex:1;text-align:center;padding:8px 0;font-size:12px;color:#999;text-decoration:none;display:flex;flex-direction:column;align-items:center;gap:2px;transition:color .2s}
+nav.tab-bar a.active{color:#1890ff}
+nav.tab-bar a .tab-icon{font-size:18px;line-height:1}
+
+.modal-mask{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;display:none;align-items:center;justify-content:center}
+.modal-mask.show{display:flex}
+.modal{background:#fff;border-radius:12px;padding:20px;width:90%;max-width:420px;max-height:80vh;overflow-y:auto}
+.modal h3{font-size:17px;margin-bottom:14px;color:#333}
+.modal .form-group{margin-bottom:12px}
+.modal .btn-submit{margin-top:4px}
+.modal img{max-width:100%;max-height:300px;display:block;margin:0 auto 10px}
+</style>
+</head>
+<body>
+
+<header>送检登记系统
+  <div class="cloud-badge" id="cloudBadge"><span class="dot"></span><span id="cloudText">连接中…</span></div>
+</header>
+
+<!-- ====== 界面1-送检登记 ====== -->
+<div class="page active" id="page-submit">
+  <div class="form-group"><label>送检车间/班次 *</label><input type="text" id="fWorkshop" placeholder="如：一车间A班" maxlength="100"></div>
+  <div class="form-group"><label>送样名称 *</label><input type="text" id="fSampleName" placeholder="请输入样品名称" maxlength="100"></div>
+  <div class="form-group"><label>送检时间 *</label><input type="datetime-local" id="fInspectionTime"></div>
+  <div class="form-group"><label>检测指标 *</label><textarea id="fIndicators" placeholder="请输入检测指标，如：水分含量、PH值、微生物指标…" maxlength="500" rows="3"></textarea></div>
+  <div class="form-group"><label>送检人 *</label><input type="text" id="fSubmitter" placeholder="请输入送检人姓名" maxlength="50"></div>
+  <div class="form-group">
+    <label>样品照片</label>
+    <div class="photo-upload">
+      <label for="photoFile">选择照片</label>
+      <input type="file" id="photoFile" accept="image/*">
+    </div>
+    <img class="photo-preview" id="photoPreview">
+  </div>
+  <button class="btn-submit" onclick="submitInspection()">提交送检</button>
+</div>
+
+<!-- ====== 界面2-样品接收 ====== -->
+<div class="page" id="page-receive">
+  <div class="count-bar" id="receiveCount"></div>
+  <div id="receiveList"></div>
+  <div class="empty-hint" id="receiveEmpty" style="display:none">暂无待接收样品</div>
+</div>
+
+<!-- ====== 界面3-检测情况 ====== -->
+<div class="page" id="page-testing">
+  <div class="count-bar" id="testingCount"></div>
+  <div id="testingList"></div>
+  <div class="empty-hint" id="testingEmpty" style="display:none">暂无待检测样品</div>
+</div>
+
+<!-- ====== 界面4-汇总 ====== -->
+<div class="page" id="page-summary">
+  <div class="search-bar">
+    <input type="text" id="searchInput" placeholder="搜索样品名称/送检人/检测人" oninput="renderSummary()">
+    <button onclick="renderSummary()">搜索</button>
+    <button onclick="exportExcel()" style="background:#52c41a">导出 Excel</button>
+  </div>
+  <div class="status-tabs">
+    <span class="status-tab active" data-status="all" onclick="setSummaryFilter('all')">全部</span>
+    <span class="status-tab" data-status="pending" onclick="setSummaryFilter('pending')">待接收</span>
+    <span class="status-tab" data-status="received" onclick="setSummaryFilter('received')">待检测</span>
+    <span class="status-tab" data-status="done" onclick="setSummaryFilter('done')">已完成</span>
+  </div>
+  <div class="count-bar" id="summaryCount"></div>
+  <div style="overflow-x:auto">
+    <table style="width:100%;border-collapse:collapse;background:#fff;font-size:13px;min-width:800px">
+      <thead><tr style="background:#f0f0f0">
+        <th style="padding:8px 6px;text-align:left;white-space:nowrap">车间班次</th>
+        <th style="padding:8px 6px;text-align:left;white-space:nowrap">样品名称</th>
+        <th style="padding:8px 6px;text-align:left;white-space:nowrap">送检时间</th>
+        <th style="padding:8px 6px;text-align:left;white-space:nowrap">检测指标</th>
+        <th style="padding:8px 6px;text-align:left;white-space:nowrap">送检人</th>
+        <th style="padding:8px 6px;text-align:left;white-space:nowrap">接收人</th>
+        <th style="padding:8px 6px;text-align:left;white-space:nowrap">接收时间</th>
+        <th style="padding:8px 6px;text-align:left;white-space:nowrap">检测结果</th>
+        <th style="padding:8px 6px;text-align:left;white-space:nowrap">检测人</th>
+        <th style="padding:8px 6px;text-align:left;white-space:nowrap">完成时间</th>
+        <th style="padding:8px 6px;text-align:left;white-space:nowrap">状态</th>
+        <th style="padding:8px 6px;text-align:left;white-space:nowrap">操作</th>
+      </tr></thead>
+      <tbody id="summaryTable"></tbody>
+    </table>
+  </div>
+  <div class="empty-hint" id="summaryEmpty" style="display:none">暂无记录</div>
+</div>
+
+<!-- ====== 模态层：检测结果填写 ====== -->
+<div class="modal-mask" id="modalMask">
+  <div class="modal" id="modalContent"></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<nav class="tab-bar">
+  <a href="javascript:switchTab('submit')" class="active" id="tabSubmit"><span class="tab-icon">+</span><span>送检登记</span></a>
+  <a href="javascript:switchTab('receive')" id="tabReceive"><span class="tab-icon">&#9744;</span><span>样品接收</span></a>
+  <a href="javascript:switchTab('testing')" id="tabTesting"><span class="tab-icon">&#9881;</span><span>检测情况</span></a>
+  <a href="javascript:switchTab('summary')" id="tabSummary"><span class="tab-icon">&#9776;</span><span>汇总</span></a>
+</nav>
+
+<script src="../supabase-js.min.js"></script>
+<script>
+const SUPABASE_URL = "https://aneryxogzmbxbrocidtq.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFuZXJ5eG9nem1ieGJyb2NpZHRxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM0OTY4NDgsImV4cCI6MjA5OTA3Mjg0OH0.eOpWb2JiZPkmmYMQ1eK0p8raNYqQH0T32UTNNRfCFDE";
+const TABLE = "inspection_register";
+
+let sbClient = null, CACHE = [], summaryFilter = "all";
+let photoBase64 = "";
+
+function $(id){return document.getElementById(id)}
+function showToast(msg){const t=$("toast");t.textContent=msg;t.classList.add("show");clearTimeout(t._tid);t._tid=setTimeout(()=>t.classList.remove("show"),1800)}
+function formatTime(ts){if(!ts)return"";const d=new Date(ts),pad=n=>String(n).padStart(2,"0");return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate())+" "+pad(d.getHours())+":"+pad(d.getMinutes())}
+function esc(s){return s?String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"):""}
+
+function setCloud(ok,text){$("cloudBadge").classList.toggle("online",!!ok);$("cloudText").textContent=text}
+
+/* ====== 图片压缩 ====== */
+$("photoFile").addEventListener("change",function(){
+  const file=this.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=function(e){
+    const img=new Image();
+    img.onload=function(){
+      const canvas=document.createElement("canvas");
+      const maxW=600;let w=img.width,h=img.height;
+      if(w>maxW){h=h*maxW/w;w=maxW}
+      canvas.width=w;canvas.height=h;
+      canvas.getContext("2d").drawImage(img,0,0,w,h);
+      photoBase64=canvas.toDataURL("image/jpeg",0.7);
+      $("photoPreview").src=photoBase64;$("photoPreview").style.display="block";
+    };
+    img.src=e.target.result;
+  };
+  reader.readAsDataURL(file);
+});
+
+/* ====== 初始化 ====== */
+async function init(){
+  sbClient=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
+  setCloud(true,"已连接云端");
+  await reloadData();
+  sbClient.channel("inspection_changes").on("postgres_changes",{event:"*",schema:"public",table:TABLE},()=>reloadData()).subscribe();
+}
+async function reloadData(){
+  const{data,error}=await sbClient.from(TABLE).select("*").order("created_at",{ascending:false});
+  if(error){showToast("读取失败："+error.message);return}
+  CACHE=data||[];
+  refreshCurrentTab();
+}
+
+/* ====== Tab 切换 ====== */
+window.switchTab=function(name){
+  document.querySelectorAll(".page").forEach(p=>p.classList.remove("active"));
+  document.querySelectorAll(".tab-bar a").forEach(a=>a.classList.remove("active"));
+  $("page-"+name).classList.add("active");$("tab"+name.charAt(0).toUpperCase()+name.slice(1)).classList.add("active");
+  refreshCurrentTab();
+};
+function refreshCurrentTab(){
+  if($("page-receive").classList.contains("active"))renderReceive();
+  else if($("page-testing").classList.contains("active"))renderTesting();
+  else if($("page-summary").classList.contains("active"))renderSummary();
+}
+
+/* ====== 送检登记提交 ====== */
+window.submitInspection=async function(){
+  const w=$("fWorkshop").value.trim(),s=$("fSampleName").value.trim(),t=$("fInspectionTime").value;
+  const i=$("fIndicators").value.trim(),su=$("fSubmitter").value.trim();
+  if(!w||!s||!t||!i||!su){showToast("请填写所有必填项");return}
+  const rec={workshop_shift:w,sample_name:s,inspection_time:t,test_indicators:i,submitter:su,sample_photo:photoBase64,status:"pending"};
+  const{error}=await sbClient.from(TABLE).insert([rec]);
+  if(error){showToast("提交失败："+error.message);return}
+  showToast("送检登记成功");
+  $("fWorkshop").value="";$("fSampleName").value="";$("fInspectionTime").value="";$("fIndicators").value="";$("fSubmitter").value="";
+  photoBase64="";$("photoPreview").style.display="none";$("photoFile").value="";
+};
+
+/* ====== 样品接收 ====== */
+function isOverdue(r){if(!r.created_at)return false;return Date.now()-new Date(r.created_at).getTime()>86400000}
+function renderReceive(){
+  const list=(CACHE||[]).filter(r=>r.status==="pending");
+  $("receiveCount").textContent="待接收样品："+list.length+" 条";
+  if(list.length===0){$("receiveList").innerHTML="";$("receiveEmpty").style.display="block";return}
+  $("receiveEmpty").style.display="none";
+  $("receiveList").innerHTML=list.map(r=>{
+    const overdue=isOverdue(r),cls=overdue?"badge-overdue":"badge-pending",txt=overdue?"超时":"待接收";
+    return`<div class="card" style="${overdue?'border-left:3px solid #ff4d4f':''}">
+      <div class="card-header"><span class="card-title">${esc(r.sample_name)}</span><span class="card-badge ${cls}">${txt}</span></div>
+      <div class="card-row"><span>车间班次：${esc(r.workshop_shift)}</span><span>送检时间：${formatTime(r.inspection_time)}</span><span>送检人：${esc(r.submitter)}</span></div>
+      <div class="card-row"><span>检测指标：${esc(r.test_indicators)}</span></div>
+      ${r.sample_photo?`<img class="card-photo" src="${r.sample_photo}" onclick="this.style.maxHeight=this.style.maxHeight==='none'?'160px':'none'">`:""}
+      <div class="card-actions">
+        <button class="btn-action btn-receive" onclick="doReceive(${r.id})">确认接收</button>
+        <button class="btn-action btn-del" onclick="doDelete(${r.id})">删除</button>
+      </div>
+    </div>`;
+  }).join("");
+}
+window.doReceive=async function(id){
+  const name=prompt("请输入接收人姓名：");if(!name||!name.trim())return;
+  const{error}=await sbClient.from(TABLE).update({status:"received",receiver:name.trim(),receive_time:new Date().toISOString()}).eq("id",id);
+  if(error){showToast("操作失败："+error.message);return}
+  showToast("已接收");reloadData();
+};
+
+/* ====== 检测情况 ====== */
+function renderTesting(){
+  const list=(CACHE||[]).filter(r=>r.status==="received");
+  $("testingCount").textContent="待检测样品："+list.length+" 条";
+  if(list.length===0){$("testingList").innerHTML="";$("testingEmpty").style.display="block";return}
+  $("testingEmpty").style.display="none";
+  $("testingList").innerHTML=list.map(r=>`<div class="card">
+    <div class="card-header"><span class="card-title">${esc(r.sample_name)}</span><span class="card-badge badge-received">待检测</span></div>
+    <div class="card-row"><span>车间班次：${esc(r.workshop_shift)}</span><span>送检时间：${formatTime(r.inspection_time)}</span><span>接收人：${esc(r.receiver)}</span></div>
+    <div class="card-row"><span>检测指标：${esc(r.test_indicators)}</span></div>
+    <div class="card-actions">
+      <button class="btn-action btn-done" onclick="showDoneModal(${r.id})">填写检测结果</button>
+    </div>
+  </div>`).join("");
+}
+window.showDoneModal=function(id){
+  $("modalMask").classList.add("show");
+  $("modalContent").innerHTML=`
+    <h3>检测情况登记</h3>
+    <div class="form-group"><label>检测结果 *</label><textarea id="mTestResult" placeholder="请输入检测结果" rows="4" maxlength="1000"></textarea></div>
+    <div class="form-group"><label>检测人 *</label><input type="text" id="mTester" placeholder="请输入检测人姓名" maxlength="50"></div>
+    <button class="btn-submit" onclick="doDone(${id})">提交检测结果</button>
+    <button style="width:100%;padding:10px;margin-top:8px;border:1px solid #ddd;border-radius:8px;background:#fff;font-size:14px;cursor:pointer" onclick="$('modalMask').classList.remove('show')">取消</button>`;
+};
+window.doDone=async function(id){
+  const r=$("mTestResult").value.trim(),t=$("mTester").value.trim();
+  if(!r||!t){showToast("请填写检测结果和检测人");return}
+  const{error}=await sbClient.from(TABLE).update({status:"done",test_result:r,tester:t,test_done_time:new Date().toISOString()}).eq("id",id);
+  if(error){showToast("操作失败："+error.message);return}
+  $("modalMask").classList.remove("show");showToast("检测结果已提交");reloadData();
+};
+$("modalMask").addEventListener("click",function(e){if(e.target===this)this.classList.remove("show")});
+
+/* ====== 汇总 ====== */
+function renderSummary(){
+  let list=CACHE||[];
+  const kw=($("searchInput").value||"").trim().toLowerCase();
+  if(kw)list=list.filter(r=>(r.sample_name||"").toLowerCase().includes(kw)||(r.submitter||"").toLowerCase().includes(kw)||(r.tester||"").toLowerCase().includes(kw));
+  if(summaryFilter!=="all")list=list.filter(r=>r.status===summaryFilter);
+  $("summaryCount").textContent="共 "+CACHE.length+" 条，当前显示 "+list.length+" 条";
+  if(list.length===0){$("summaryTable").innerHTML="";$("summaryEmpty").style.display="block";return}
+  $("summaryEmpty").style.display="none";
+  const badge=s=>s==="pending"?'<span style="color:#e65100">待接收</span>':s==="received"?'<span style="color:#1565c0">待检测</span>':'<span style="color:#2e7d32">已完成</span>';
+  $("summaryTable").innerHTML=list.map(r=>`<tr style="border-bottom:1px solid #f0f0f0">
+    <td style="padding:8px 6px">${esc(r.workshop_shift)}</td><td style="padding:8px 6px">${esc(r.sample_name)}</td><td style="padding:8px 6px">${formatTime(r.inspection_time)}</td>
+    <td style="padding:8px 6px;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.test_indicators||"")}</td>
+    <td style="padding:8px 6px">${esc(r.submitter)}</td><td style="padding:8px 6px">${esc(r.receiver)}</td><td style="padding:8px 6px">${formatTime(r.receive_time)}</td>
+    <td style="padding:8px 6px;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.test_result||"")}</td>
+    <td style="padding:8px 6px">${esc(r.tester)}</td><td style="padding:8px 6px">${formatTime(r.test_done_time)}</td>
+    <td style="padding:8px 6px">${badge(r.status)}</td>
+    <td style="padding:8px 6px"><button style="border:none;background:#ff4d4f;color:#fff;padding:4px 10px;border-radius:4px;font-size:12px;cursor:pointer" onclick="doDelete(${r.id})">删除</button></td>
+  </tr>`).join("");
+}
+window.setSummaryFilter=function(s){summaryFilter=s;document.querySelectorAll(".status-tab").forEach(b=>b.classList.toggle("active",b.getAttribute("data-status")===s));renderSummary()};
+window.doDelete=async function(id){if(!confirm("确认删除？"))return;const{error}=await sbClient.from(TABLE).delete().eq("id",id);if(error){showToast("删除失败："+error.message);return}showToast("已删除");reloadData()};
+
+/* ====== 导出 Excel ====== */
+window.exportExcel=function(){
+  if(typeof XLSX==="undefined"){showToast("导出组件未加载");return}
+  let list=CACHE||[];
+  const kw=($("searchInput").value||"").trim().toLowerCase();
+  if(kw)list=list.filter(r=>(r.sample_name||"").toLowerCase().includes(kw)||(r.submitter||"").toLowerCase().includes(kw)||(r.tester||"").toLowerCase().includes(kw));
+  if(summaryFilter!=="all")list=list.filter(r=>r.status===summaryFilter);
+  if(!list.length){showToast("没有可导出的数据");return}
+  const h=["车间班次","样品名称","送检时间","检测指标","送检人","接收人","接收时间","检测结果","检测人","完成时间","状态"];
+  const rows=[h];const st=s=>s==="pending"?"待接收":s==="received"?"待检测":"已完成";
+  list.forEach(r=>rows.push([r.workshop_shift,r.sample_name,formatTime(r.inspection_time),r.test_indicators,r.submitter,r.receiver,formatTime(r.receive_time),r.test_result,r.tester,formatTime(r.test_done_time),st(r.status)]));
+  const wb=XLSX.utils.book_new(),ws=XLSX.utils.aoa_to_sheet(rows);
+  const cw=[];for(let c=0;c<h.length;c++){let m=h[c].length;for(let ri=1;ri<rows.length;ri++){const v=String(rows[ri][c]||"");if(v.length>m)m=v.length}cw.push({wch:Math.min(m+4,50)})}
+  ws["!cols"]=cw;XLSX.utils.book_append_sheet(wb,ws,"送检登记汇总");
+  const d=new Date();XLSX.writeFile(wb,"送检登记表_"+d.getFullYear()+"-"+(d.getMonth()+1)+"-"+d.getDate()+".xlsx");showToast("导出成功");
+};
+
+init();
+</script>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+</body>
+</html>
