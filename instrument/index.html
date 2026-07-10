@@ -135,7 +135,7 @@ function calcDuration(){const s=$("fStartTime").value,e=$("fEndTime").value;
   const ds=new Date(s),de=new Date(e);
   if(ds>=de){$("durationDisplay").textContent="结束时间必须晚于开始时间";return""}
   const diff=Math.round((de-ds)/(1000*60));const h=Math.floor(diff/60),m=diff%60;
-  let t=(h>0?h+"小时":"")+(m>0?m+"分钟":"h===0&&m===0?"<1分钟":"");
+  let t=(h>0?h+"小时":"")+(m>0?m+"分钟":h===0&&m===0?"不足1分钟":"");
   $("durationDisplay").textContent="使用时长："+t;
   return t;
 }
